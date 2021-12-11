@@ -90,8 +90,8 @@ module user_proj_example #(
     assign wdata = wbs_dat_i;
 
     // IO
-    assign io_out = count;
-    assign io_oeb = {(`MPRJ_IO_PADS-1){rst}};
+    //assign io_out = count;
+    //assign io_oeb = {(`MPRJ_IO_PADS-1){rst}};
 
     // IRQ
     assign irq = 3'b000;	// Unused
@@ -104,62 +104,42 @@ module user_proj_example #(
     assign clk = (~la_oenb[64]) ? la_data_in[64]: wb_clk_i;
     assign rst = (~la_oenb[65]) ? la_data_in[65]: wb_rst_i;
 
-    counter #(
-        .BITS(BITS)
-    ) counter(
-        .clk(clk),
-        .reset(rst),
-        .ready(wbs_ack_o),
-        .valid(valid),
-        .rdata(rdata),
-        .wdata(wbs_dat_i),
-        .wstrb(wstrb),
-        .la_write(la_write),
-        .la_input(la_data_in[63:32]),
-        .count(count)
+    adder4bit myadder(
+        .a(io_in[13:10])
+        .b(io_in[17:14])
+        .sum(io_out[21:18])
+        .co(io_out[22:22])
     );
-
+    assign io_oeb[22:18] = 1'b1;
+    
 endmodule
 
-module counter #(
-    parameter BITS = 32
-)(
-    input clk,
-    input reset,
-    input valid,
-    input [3:0] wstrb,
-    input [BITS-1:0] wdata,
-    input [BITS-1:0] la_write,
-    input [BITS-1:0] la_input,
-    output ready,
-    output [BITS-1:0] rdata,
-    output [BITS-1:0] count
-);
-    reg ready;
-    reg [BITS-1:0] count;
-    reg [BITS-1:0] rdata;
-
-    always @(posedge clk) begin
-        if (reset) begin
-            count <= 0;
-            ready <= 0;
-        end else begin
-            ready <= 1'b0;
-            if (~|la_write) begin
-                count <= count + 1;
-            end
-            if (valid && !ready) begin
-                ready <= 1'b1;
-                rdata <= count;
-                if (wstrb[0]) count[7:0]   <= wdata[7:0];
-                if (wstrb[1]) count[15:8]  <= wdata[15:8];
-                if (wstrb[2]) count[23:16] <= wdata[23:16];
-                if (wstrb[3]) count[31:24] <= wdata[31:24];
-            end else if (|la_write) begin
-                count <= la_write & la_input;
-            end
-        end
-    end
-
+module adder4bit(a,b,sum,co);
+input [3:0]a,b;
+output [3:0]sum;
+output co;
+fa fa1(a[0],b[0],1'b0,sum[0],c1),
+   fa2(a[1],b[1],c1,sum[1],c2),
+   fa3(a[2],b[2],c2,sum[2],c3),
+   fa4(a[3],b[3],c3,sum[3],co);
 endmodule
+module fa(a,b,cin,sum,co);
+input a,b,cin;
+output sum,co;
+ha ha1(a,b,s1,c1),
+   ha2(cin,s1,sum,c2);
+orgate or1(c1,c2,co);
+endmodule
+module ha(a,b,sum,co);
+input a,b;
+output sum,co;
+assign sum=a^b;
+assign co=a&b;
+endmodule
+module orgate(a,b,y);
+input a,b;
+output y;
+assign y=a|b;
+endmodule
+
 `default_nettype wire
