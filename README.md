@@ -5,4 +5,4 @@
 | :exclamation: Important Note            |
 |-----------------------------------------|
 
-4-bit adder
+4-bit adder, using openlane and skywater 130nm PDK.
